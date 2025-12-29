@@ -27,3 +27,6 @@
 
     enable_odom_tf: true
     publish_odom: true
+
+    pose_covariance_diagonal: [0.001, 0.001, 1000000.0, 1000000.0, 1000000.0, 0.1]
+    twist_covariance_diagonal: [0.001, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 0.1]
