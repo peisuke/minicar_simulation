@@ -28,7 +28,7 @@
       <camera name="top_view">
         <pose>0 0 20 0 1.57079632679 0</pose>
         <projection_type>orthographic</projection_type>
-	      <ortho_width>40</ortho_width>
+        <ortho_width>40</ortho_width>
       </camera>
     </gui>
 

@@ -15,10 +15,9 @@ setup(
         ('share/' + package_name + '/description/urdf', ['description/urdf/minicar_diff_gazebo.xacro']),
         ('share/' + package_name + '/description/config', ['description/config/minicar_diff_controller.yaml']),
         ('share/' + package_name + '/worlds', ['worlds/road_env.world']),
-        ('share/' + package_name + '/models/road_env', ['models/road_env/model.sdf', 'models/road_env/model.config']),
-        ('share/' + package_name + '/models/road_env/meshes', ['models/road_env/meshes/walls.stl']),
+        # Note: models/road_env/* are generated at runtime to /tmp/minicar_simulation/models/
         # Course generation scripts
-        ('share/' + package_name + '/scripts', ['scripts/main.py']),
+        ('share/' + package_name + '/scripts', ['scripts/generate_course.py']),
         ('share/' + package_name + '/scripts/create_course', [
             'scripts/create_course/__init__.py',
             'scripts/create_course/models.py',

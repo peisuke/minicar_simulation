@@ -230,8 +230,8 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             "start_position",
-            default_value="0.0",
-            description="Start position on course as ratio (0.0 to 1.0)."
+            default_value="0.1",
+            description="Start position on course as ratio (0.0 to 1.0). Default 0.1 avoids sharp corners."
         ),
         DeclareLaunchArgument(
             "generate_course",
