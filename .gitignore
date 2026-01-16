@@ -151,3 +151,9 @@ test/
 # OS
 .DS_Store
 Thumbs.db
+
+# Generated files (minicar_simulation)
+output/
+models/road_env/meshes/walls.stl
+models/road_env/model.config
+models/road_env/model.sdf
