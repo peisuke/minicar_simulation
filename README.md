@@ -8,8 +8,9 @@ ROS2用のミニカーシミュレーションパッケージです。Gazeboシ�
 
 - Gazeboでのミニカーシミュレーション
 - 差動駆動制御（diff_drive_controller）
-- カスタマイズ可能な道路環境
-- ロボットの姿勢・位置の初期化
+- ランダムなコースの動的生成（seed指定で再現可能）
+- コース上の任意の位置からのスタート
+- ヘッドレスモード（GUI無し）でのシミュレーション
 
 ## 使用方法
 
@@ -17,6 +18,24 @@ ROS2用のミニカーシミュレーションパッケージです。Gazeboシ�
 
 ```bash
 ros2 launch minicar_simulation road_env_minicar.launch.py
+```
+
+### ランダムコースで起動（毎回異なるコース）
+
+```bash
+ros2 launch minicar_simulation road_env_minicar.launch.py
+```
+
+### 再現可能なコースで起動（seed指定）
+
+```bash
+ros2 launch minicar_simulation road_env_minicar.launch.py seed:=42
+```
+
+### ヘッドレスモード（GUIなし）
+
+```bash
+ros2 launch minicar_simulation road_env_minicar.launch.py gui:=false
 ```
 
 ### launchファイル
@@ -29,40 +48,55 @@ Gazeboシミュレーション環境でミニカーを起動します。
 
 | パラメータ | デフォルト値 | 説明 |
 |-----------|-------------|------|
+| `seed` | (空) | コース生成のシード値。空の場合はランダム |
+| `start_position` | `0.0` | コース上の開始位置（0.0〜1.0の比率） |
+| `generate_course` | `true` | コースを動的に生成するか |
+| `gui` | `true` | GazeboのGUIを表示するか |
 | `world` | `road_env.world` | 使用するGazeboワールドファイル |
 | `entity` | `minicar` | ロボットのエンティティ名 |
-| `x` | `0.0` | 初期X座標 (m) |
-| `y` | `1.5` | 初期Y座標 (m) |
-| `z` | `0.05` | 初期Z座標 (m) |
-| `yaw` | `0.0` | 初期ヨー角 (rad) |
+| `x` | `0.0` | 初期X座標 (m) ※generate_course=falseの場合のみ |
+| `y` | `1.5` | 初期Y座標 (m) ※generate_course=falseの場合のみ |
+| `z` | `0.05` | 初期Z座標 (m) ※generate_course=falseの場合のみ |
+| `yaw` | `0.0` | 初期ヨー角 (rad) ※generate_course=falseの場合のみ |
 | `use_sim_time` | `true` | シミュレーション時間の使用 |
 | `robot_ns` | `sim_robot` | ロボットの名前空間 |
-| `joint_state_broadcaster` | `joint_state_broadcaster` | ジョイント状態ブロードキャスター名 |
-| `diff_controller` | `diff_drive_controller` | 差動駆動コントローラー名 |
 
 **使用例：**
 
 ```bash
-# 初期位置を変更
-ros2 launch minicar_simulation road_env_minicar.launch.py x:=2.0 y:=0.0 yaw:=1.57
+# seed=42で再現可能なコース、GUIなし
+ros2 launch minicar_simulation road_env_minicar.launch.py seed:=42 gui:=false
 
-# 名前空間を変更
-ros2 launch minicar_simulation road_env_minicar.launch.py robot_ns:=my_robot
+# コースの中間地点（50%）からスタート
+ros2 launch minicar_simulation road_env_minicar.launch.py seed:=42 start_position:=0.5
 
-# カスタムワールドファイルを使用
-ros2 launch minicar_simulation road_env_minicar.launch.py world:=/path/to/custom.world
+# コース生成なし（既存コースを使用）
+ros2 launch minicar_simulation road_env_minicar.launch.py generate_course:=false x:=2.0 y:=0.0
 ```
 
-#### `robot_state_publisher.launch.py`
+## コース生成スクリプト
 
-ロボットの状態パブリッシャーのみを起動します。
+`scripts/generate_course.py` でコースを手動生成できます。
 
-**使用可能なオプション：**
+```bash
+# ランダムなコースを生成
+python3 scripts/generate_course.py
 
-| パラメータ | デフォルト値 | 説明 |
-|-----------|-------------|------|
-| `robot_ns` | `sim_robot` | ロボットの名前空間 |
-| `use_sim_time` | `true` | シミュレーション時間の使用 |
+# seed指定で再現可能なコースを生成
+python3 scripts/generate_course.py --seed 42
+
+# 出力先を指定
+python3 scripts/generate_course.py --output-dir /tmp/my_course --models-dir /tmp/my_models
+```
+
+**生成されるファイル：**
+
+| ファイル | 説明 |
+|---------|------|
+| `circuit.json` | コースのウェイポイント・曲線データ |
+| `circuit.png` | コースのプレビュー画像 |
+| `spawn_pose.json` | ロボットの初期位置・姿勢 |
+| `models/road_env/` | Gazebo用の壁モデル（STL + SDF） |
 
 ## ロボット制御
 
@@ -70,10 +104,10 @@ ros2 launch minicar_simulation road_env_minicar.launch.py world:=/path/to/custom
 
 ```bash
 # 速度指令の送信
-ros2 topic pub /cmd_vel geometry_msgs/msg/Twist '{linear: {x: 0.5}, angular: {z: 0.0}}'
+ros2 topic pub /sim_robot/diff_drive_controller/cmd_vel_unstamped geometry_msgs/msg/Twist '{linear: {x: 0.3}, angular: {z: 0.0}}'
 
 # オドメトリ情報の確認
-ros2 topic echo /sim_robot/odom
+ros2 topic echo /sim_robot/diff_drive_controller/odom
 ```
 
 ## 依存関係
@@ -84,6 +118,7 @@ ros2 topic echo /sim_robot/odom
 - diff_drive_controller
 - robot_state_publisher
 - gazebo_ros
+- Python: numpy, opencv-python, scipy
 
 ## トラブルシューティング
 
@@ -93,4 +128,14 @@ ros2 topic echo /sim_robot/odom
 
 ### ロボットが表示されない場合
 
-GAZEBO_MODEL_PATHが正しく設定されているか確認してください。このパッケージは自動的にモデルパスを設定しますが、カスタムモデルを使用する場合は手動設定が必要です。
+GAZEBO_MODEL_PATHが正しく設定されているか確認してください。このパッケージは自動的にモデルパスを設定します。
+
+### ヘッドレスモードで動作確認
+
+```bash
+# トピック一覧を確認
+ros2 topic list
+
+# オドメトリが出力されていることを確認
+ros2 topic echo /sim_robot/diff_drive_controller/odom --once
+```
