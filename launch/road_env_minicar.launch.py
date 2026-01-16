@@ -78,10 +78,23 @@ def create_spawn_actions(context, *args, **kwargs):
         arguments=[diff_name, "--controller-manager", cm_fqn],
     )
 
+    # Reset robot node
+    reset_robot_node = Node(
+        package="minicar_simulation",
+        executable="reset_robot",
+        name="reset_robot_node",
+        output="screen",
+        parameters=[{
+            "entity_name": entity,
+            "spawn_pose_file": SPAWN_POSE_FILE,
+        }],
+    )
+
     return [
         LogInfo(msg=f"Spawning at x={pose['x']:.3f}, y={pose['y']:.3f}, yaw={pose['yaw']:.3f}"),
         TimerAction(period=3.0, actions=[spawn]),
         TimerAction(period=6.0, actions=[spawn_jsb, spawn_diff]),
+        TimerAction(period=7.0, actions=[reset_robot_node]),
     ]
 
 
@@ -212,6 +225,19 @@ def generate_launch_description():
         condition=UnlessCondition(generate_course),
     )
 
+    # Reset robot node (for generate_course=false case)
+    reset_robot_node_immediate = Node(
+        package="minicar_simulation",
+        executable="reset_robot",
+        name="reset_robot_node",
+        output="screen",
+        parameters=[{
+            "entity_name": entity,
+            "spawn_pose_file": SPAWN_POSE_FILE,
+        }],
+        condition=UnlessCondition(generate_course),
+    )
+
     return LaunchDescription([
         DeclareLaunchArgument("world", default_value=default_world),
         DeclareLaunchArgument("entity", default_value="minicar"),
@@ -268,4 +294,5 @@ def generate_launch_description():
         ),
         immediate_spawn,
         immediate_controllers,
+        TimerAction(period=7.0, actions=[reset_robot_node_immediate]),
     ])

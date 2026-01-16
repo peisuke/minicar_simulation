@@ -40,6 +40,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'reset_robot = minicar_simulation.reset_robot_node:main',
         ],
     },
 )
