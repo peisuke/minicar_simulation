@@ -387,23 +387,23 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Configure the generator
-    # Scale adjusted to match original course size (~6m x 3m)
+    # Scale adjusted for real environment (3x larger than original)
     config = GeneratorConfig(
         ellipse=EllipseParams(
             center_x=0.0,
             center_y=0.0,
-            semi_major=3.0,       # 100.0 -> 3.0 (approx 1/33 scale)
-            semi_minor=1.8,       # 60.0 -> 1.8
+            semi_major=9.0,       # 3.0 * 3 = 9.0 (実環境用)
+            semi_minor=5.4,       # 1.8 * 3 = 5.4
             rotation=0.0,
         ),
         min_waypoint_count=12,
         max_waypoint_count=20,
-        min_waypoint_interval=0.2,
-        max_waypoint_interval=0.6,
-        min_offset=-0.5,          # -15.0 -> -0.5
-        max_offset=0.5,           # 15.0 -> 0.5
-        shortcut_min_offset=-0.3, # -8.0 -> -0.3
-        shortcut_max_offset=0.3,  # 8.0 -> 0.3
+        min_waypoint_interval=0.6,  # 0.2 * 3 = 0.6
+        max_waypoint_interval=1.8,  # 0.6 * 3 = 1.8
+        min_offset=-1.5,          # -0.5 * 3 = -1.5
+        max_offset=1.5,           # 0.5 * 3 = 1.5
+        shortcut_min_offset=-0.9, # -0.3 * 3 = -0.9
+        shortcut_max_offset=0.9,  # 0.3 * 3 = 0.9
         spline_resolution=50,
         seed=args.seed,
     )
@@ -424,15 +424,15 @@ def main():
         print(f"  {sc.name}: {len(sc.waypoints)} waypoints, {len(sc.curve_points)} curve points")
 
     # Generate Gazebo model
-    # Parameters adjusted to match original code scale (1px = 1cm)
+    # Parameters adjusted for real environment (3x larger)
     routes = courses_to_routes(outer_course, shortcuts)
     triangles, polys = routes_to_wall_triangles(
         routes_xy_m=routes,
-        road_width_m=0.6,         # 60px * 0.01 = 0.6m
+        road_width_m=1.8,         # 0.6 * 3 = 1.8m (実環境用)
         wall_height_m=0.3,
-        wall_thickness_m=0.05,    # 5px * 0.01 = 0.05m
-        meters_per_pixel=0.01,    # 0.1 -> 0.01 (1px = 1cm)
-        img_wh=(800, 500),        # (3000, 2000) -> (800, 500)
+        wall_thickness_m=0.15,    # 0.05 * 3 = 0.15m
+        meters_per_pixel=0.03,    # 0.01 * 3 = 0.03 (800px = 24m)
+        img_wh=(800, 500),
     )
 
     model_path = export_gazebo_model_to(triangles, model_name="road_env", models_dir=models_dir)
@@ -441,7 +441,7 @@ def main():
 
     # Save course preview image
     image_path = output_dir / "circuit.png"
-    save_course_image(routes, image_path, img_wh=(800, 500), meters_per_pixel=0.01)
+    save_course_image(routes, image_path, img_wh=(800, 500), meters_per_pixel=0.03, road_width_px=60)
     print(f"  Preview: {image_path}")
 
     # Calculate and export spawn pose
