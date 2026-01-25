@@ -1,16 +1,18 @@
 <?xml version="1.0"?>
 <robot name="minicar_ackermann" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
+  <!-- Launch arguments -->
   <xacro:arg name="robot_ns" default="sim_robot"/>
 
+  <!-- Constants for robot dimensions -->
   <xacro:property name="PI" value="3.1415926535897931"/>
 
-  <!-- Robot body dimensions - Based on Tamiya TT-02 chassis -->
+  <!-- Robot body dimensions (Tamiya TT-02 chassis) -->
   <xacro:property name="body_length" value="0.38"/>
   <xacro:property name="body_width" value="0.19"/>
   <xacro:property name="body_height" value="0.03"/>
 
-  <!-- Wheel dimensions - TT-02 standard tires -->
+  <!-- Wheel dimensions (TT-02 standard tires) -->
   <xacro:property name="wheel_radius" value="0.032"/>
   <xacro:property name="wheel_width" value="0.024"/>
   <xacro:property name="wheel_track" value="0.19"/>
@@ -19,7 +21,7 @@
   <!-- Steering parameters -->
   <xacro:property name="max_steering_angle" value="0.52"/>
 
-  <!-- LiDAR dimensions -->
+  <!-- LiDAR dimensions (55.6x55.6x41.3mm) -->
   <xacro:property name="lidar_radius" value="0.0278"/>
   <xacro:property name="lidar_height" value="0.0413"/>
 
@@ -27,17 +29,20 @@
   <material name="white">
     <color rgba="0.8 0.8 0.8 1.0"/>
   </material>
+
   <material name="black">
     <color rgba="0.0 0.0 0.0 1.0"/>
   </material>
+
   <material name="gray">
     <color rgba="0.5 0.5 0.5 1.0"/>
   </material>
+
   <material name="blue">
     <color rgba="0.0 0.0 1.0 1.0"/>
   </material>
 
-  <!-- Base footprint -->
+  <!-- Base footprint (contact point with ground) -->
   <link name="base_footprint">
     <visual>
       <geometry>
@@ -46,7 +51,7 @@
     </visual>
   </link>
 
-  <!-- Base link -->
+  <!-- Base link (robot center) -->
   <link name="base_link">
     <visual>
       <geometry>
@@ -67,6 +72,7 @@
     </inertial>
   </link>
 
+  <!-- Base footprint to base link -->
   <joint name="base_joint" type="fixed">
     <parent link="base_footprint"/>
     <child link="base_link"/>
@@ -190,36 +196,52 @@
     <origin xyz="0 0 ${body_height/2 + lidar_height/2}" rpy="0 0 0"/>
   </joint>
 
-  <!-- ros2_control -->
+  <!-- ros2_control hardware interface -->
   <ros2_control name="GazeboSystem" type="system">
     <hardware>
       <plugin>gazebo_ros2_control/GazeboSystem</plugin>
     </hardware>
+
     <joint name="front_left_steering_joint">
-      <command_interface name="position"/>
+      <command_interface name="position">
+        <param name="min">-0.52</param>
+        <param name="max">0.52</param>
+      </command_interface>
       <state_interface name="position"/>
       <state_interface name="velocity"/>
     </joint>
+
     <joint name="front_right_steering_joint">
-      <command_interface name="position"/>
+      <command_interface name="position">
+        <param name="min">-0.52</param>
+        <param name="max">0.52</param>
+      </command_interface>
       <state_interface name="position"/>
       <state_interface name="velocity"/>
     </joint>
+
     <joint name="rear_left_wheel_joint">
-      <command_interface name="velocity"/>
+      <command_interface name="velocity">
+        <param name="min">-20.0</param>
+        <param name="max">20.0</param>
+      </command_interface>
       <state_interface name="velocity"/>
       <state_interface name="position"/>
     </joint>
+
     <joint name="rear_right_wheel_joint">
-      <command_interface name="velocity"/>
+      <command_interface name="velocity">
+        <param name="min">-20.0</param>
+        <param name="max">20.0</param>
+      </command_interface>
       <state_interface name="velocity"/>
       <state_interface name="position"/>
     </joint>
   </ros2_control>
 
-  <!-- Gazebo ros2_control plugin -->
+  <!-- Gazebo + ros2_control bridge -->
   <gazebo>
-    <plugin filename="libgazebo_ros2_control.so" name="gazebo_ros2_control">
+    <plugin name="gazebo_ros2_control" filename="libgazebo_ros2_control.so">
       <robot_sim_type>gazebo_ros2_control/GazeboSystem</robot_sim_type>
       <parameters>$(find minicar_simulation)/description/config/minicar_ackermann_controller.yaml</parameters>
       <ros>

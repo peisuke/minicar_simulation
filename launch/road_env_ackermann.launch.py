@@ -45,8 +45,7 @@ def create_spawn_actions(context, *args, **kwargs):
     jsb_name = LaunchConfiguration("joint_state_broadcaster").perform(context)
     controller_name = LaunchConfiguration("ackermann_controller").perform(context)
 
-    LogInfo(msg=f"Spawning Ackermann robot at x={pose['x']:.3f}, y={pose['y']:.3f}, yaw={pose['yaw']:.3f}")
-
+    # Spawn entity with pose from course
     spawn = Node(
         package="gazebo_ros",
         executable="spawn_entity.py",
@@ -61,6 +60,7 @@ def create_spawn_actions(context, *args, **kwargs):
         ],
     )
 
+    # Controller manager path
     cm_fqn = f"/{robot_ns}/controller_manager"
 
     spawn_jsb = Node(
@@ -117,11 +117,12 @@ def generate_launch_description():
     pkg_minicar = FindPackageShare("minicar_simulation")
     default_world = PathJoinSubstitution([pkg_minicar, "worlds", "road_env.world"])
 
-    # Gazebo model path setup
+    # Gazebo model path setup - include both install and runtime directories
     current_model_path = os.environ.get('GAZEBO_MODEL_PATH', '')
     pkg_share_path = get_package_share_directory("minicar_simulation")
     install_models_path = os.path.join(pkg_share_path, "models")
 
+    # Build model path: runtime dir (priority) + install dir + existing
     model_paths = [RUNTIME_MODELS_DIR, install_models_path]
     if current_model_path:
         model_paths.append(current_model_path)
