@@ -2,43 +2,51 @@
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Command
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Command, PythonExpression
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 from launch_ros.parameter_descriptions import ParameterValue
 
 def generate_launch_description():
-    
+
     # Launch arguments
     robot_ns_arg = DeclareLaunchArgument(
         'robot_ns',
         default_value='sim_robot',
         description='Robot namespace'
     )
-    
+
     use_sim_time_arg = DeclareLaunchArgument(
         'use_sim_time',
         default_value='true',
         description='Use simulation time'
     )
-    
+
+    robot_type_arg = DeclareLaunchArgument(
+        'robot_type',
+        default_value='diff',
+        description='Robot type: diff or ackermann'
+    )
+
     # Launch configurations
     robot_ns = LaunchConfiguration('robot_ns')
     use_sim_time = LaunchConfiguration('use_sim_time')
-    
-    # Process xacro file
+    robot_type = LaunchConfiguration('robot_type')
+
+    # Process xacro file based on robot_type
     xacro_file = PathJoinSubstitution([
         FindPackageShare('minicar_simulation'),
         'description', 'urdf',
-        'minicar_diff_gazebo.xacro'
+        PythonExpression(["'minicar_", robot_type, "_gazebo.xacro'"])
     ])
-    
+
     robot_description = ParameterValue(Command(['xacro ', xacro_file, ' robot_ns:=', robot_ns]), value_type=str)
-    
+
     return LaunchDescription([
         robot_ns_arg,
         use_sim_time_arg,
-        
+        robot_type_arg,
+
         # Robot state publisher
         Node(
             package='robot_state_publisher',
