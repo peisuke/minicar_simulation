@@ -13,7 +13,8 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from scipy.spatial import Delaunay
+from shapely.geometry import Polygon
+from shapely.ops import triangulate
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -69,27 +70,28 @@ def extract_contour_pairs(binary, approx_eps=3.0, interpolate_dist=10):
     all_contours = []
 
     for i, h in enumerate(hierarchy):
-        # Find outer contours (no parent) that have children (holes)
-        if h[3] == -1 and h[2] != -1:
+        # Find outer contours (no parent)
+        if h[3] == -1:
             outer = cv2.approxPolyDP(contours[i], epsilon=approx_eps, closed=True)
             outer_pts = [(int(p[0][0]), int(p[0][1])) for p in outer]
             outer_pts_interp = interpolate_contour(outer_pts, max_dist=interpolate_dist)
-            all_contours.append(outer_pts)
+            all_contours.append(outer_pts_interp)
 
-            # Get all children (holes)
+            # Get all children (holes) as separate lists
             child_idx = h[2]
-            inner_pts = []
-            inner_pts_interp = []
+            holes = []
             while child_idx != -1:
                 inner = cv2.approxPolyDP(contours[child_idx], epsilon=approx_eps, closed=True)
                 pts = [(int(p[0][0]), int(p[0][1])) for p in inner]
-                inner_pts.extend(pts)
-                inner_pts_interp.extend(interpolate_contour(pts, max_dist=interpolate_dist))
-                all_contours.append(pts)
+                pts_interp = interpolate_contour(pts, max_dist=interpolate_dist)
+                if len(pts_interp) >= 3:
+                    holes.append(pts_interp)
+                all_contours.append(pts_interp)
                 child_idx = hierarchy[child_idx][0]
 
-            if len(outer_pts_interp) >= 3 and len(inner_pts_interp) >= 3:
-                pairs.append((outer_pts_interp, inner_pts_interp))
+            # Include contours with or without holes
+            if len(outer_pts_interp) >= 3:
+                pairs.append((outer_pts_interp, holes))
 
     return pairs, all_contours
 
@@ -102,8 +104,8 @@ def triangle_max_edge(p0, p1, p2):
     return max(d01, d12, d20)
 
 
-def create_top_faces(pairs, binary, wall_height_m, meters_per_pixel, img_shape, max_edge_px=30, z0=0.0):
-    """Create top face triangles using Delaunay triangulation."""
+def create_top_faces(pairs, wall_height_m, meters_per_pixel, img_shape, z0=0.0):
+    """Create top face triangles using Shapely triangulation."""
     H, W = img_shape[:2]
 
     def px_to_m(p):
@@ -113,34 +115,35 @@ def create_top_faces(pairs, binary, wall_height_m, meters_per_pixel, img_shape, 
     triangles = []
     z_top = z0 + wall_height_m
 
-    for outer_pts, inner_pts in pairs:
-        all_pts = list(set(outer_pts + inner_pts))
-        if len(all_pts) < 3:
+    for outer_pts, holes in pairs:
+        if len(outer_pts) < 3:
             continue
 
-        pts_array = np.array(all_pts, dtype=np.float64)
-
+        # Create Shapely Polygon with holes
         try:
-            tri = Delaunay(pts_array)
+            poly = Polygon(outer_pts, holes=holes if holes else None)
+            if not poly.is_valid or poly.is_empty:
+                continue
         except Exception:
             continue
 
-        for simplex in tri.simplices:
-            p0 = pts_array[simplex[0]]
-            p1 = pts_array[simplex[1]]
-            p2 = pts_array[simplex[2]]
+        # Triangulate
+        try:
+            tris = triangulate(poly)
+        except Exception:
+            continue
 
-            # Check centroid is on wall
-            cx = int((p0[0] + p1[0] + p2[0]) / 3)
-            cy = int((p0[1] + p1[1] + p2[1]) / 3)
-
-            if not (0 <= cx < W and 0 <= cy < H and binary[cy, cx] > 0):
+        # Filter triangles that are within the polygon (excluding holes)
+        for t in tris:
+            centroid = t.centroid
+            if not poly.contains(centroid):
                 continue
 
-            # Check max edge length
-            max_edge = triangle_max_edge(p0, p1, p2)
-            if max_edge > max_edge_px:
-                continue
+            # Extract 3 vertices
+            xs, ys = t.exterior.coords.xy
+            p0 = (xs[0], ys[0])
+            p1 = (xs[1], ys[1])
+            p2 = (xs[2], ys[2])
 
             # Convert to meters
             v0 = px_to_m(p0)
@@ -346,6 +349,12 @@ def parse_args():
         default=0.0,
         help="Rotate image by degrees (counter-clockwise, default: 0)"
     )
+    parser.add_argument(
+        "--interpolate-dist",
+        type=int,
+        default=10,
+        help="Point spacing along contours in pixels (default: 10, smaller=denser)"
+    )
     return parser.parse_args()
 
 
@@ -384,7 +393,7 @@ def main():
     print(f"  Scale: {args.scale} m/px -> {W * args.scale:.1f}m x {H * args.scale:.1f}m")
 
     # Extract contour pairs (outer + inner)
-    pairs, all_contours = extract_contour_pairs(binary, approx_eps=3.0, interpolate_dist=10)
+    pairs, all_contours = extract_contour_pairs(binary, approx_eps=3.0, interpolate_dist=args.interpolate_dist)
     print(f"  Found {len(pairs)} contour pairs, {len(all_contours)} total contours")
 
     # Create side faces
@@ -396,14 +405,12 @@ def main():
     )
     print(f"  Side faces: {len(side_triangles)} triangles")
 
-    # Create top faces
+    # Create top faces using Shapely triangulation
     top_triangles = create_top_faces(
         pairs,
-        binary,
         wall_height_m=args.wall_height,
         meters_per_pixel=args.scale,
         img_shape=original.shape,
-        max_edge_px=args.max_edge,
     )
     print(f"  Top faces: {len(top_triangles)} triangles")
 
