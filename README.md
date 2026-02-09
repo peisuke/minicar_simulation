@@ -76,6 +76,43 @@ ros2 launch minicar_simulation road_env_minicar.launch.py generate_course:=false
 
 ## コース生成スクリプト
 
+### PNG画像からコース生成
+
+`scripts/generate_course_from_image.py` でPNG画像から3D壁メッシュを生成できます。
+
+```bash
+# 基本的な使い方
+python3 scripts/generate_course_from_image.py --input input/map.png
+
+# スケールと壁の高さを指定
+python3 scripts/generate_course_from_image.py --input input/map.png --scale 0.007 --wall-height 0.3
+
+# 上面の穴を埋める（max-edgeを増やす）
+python3 scripts/generate_course_from_image.py --input input/map.png --scale 0.007 --max-edge 50
+```
+
+**オプション：**
+
+| パラメータ | デフォルト値 | 説明 |
+|-----------|-------------|------|
+| `--input` | `input/map.png` | 入力PNG画像（黒線=壁、白=道路） |
+| `--scale` | `0.02` | メートル/ピクセル |
+| `--wall-height` | `0.3` | 壁の高さ (m) |
+| `--max-edge` | `30` | 上面三角形の最大辺長 (px) |
+| `--threshold` | `128` | 二値化の閾値 |
+
+**生成後のシミュレーション起動：**
+
+```bash
+# 基本
+ros2 launch minicar_simulation road_env_ackermann.launch.py generate_course:=false
+
+# 位置と向きを指定（yawはラジアン、3.14=180度）
+ros2 launch minicar_simulation road_env_ackermann.launch.py generate_course:=false x:=0.0 y:=-2.0 yaw:=3.14
+```
+
+### ランダムコース生成
+
 `scripts/generate_course.py` でコースを手動生成できます。
 
 ```bash
