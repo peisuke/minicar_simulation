@@ -224,13 +224,13 @@
         <noise>
           <type>gaussian</type>
           <mean>0.0</mean>
-          <stddev>0.03</stddev>
+          <stddev>0.005</stddev>
         </noise>
       </ray>
       <plugin name="laser_controller" filename="libgazebo_ros_ray_sensor.so">
         <ros>
           <namespace>/$(arg robot_ns)</namespace>
-          <remapping>~/out:=scan</remapping>
+          <remapping>~/out:=scan_raw</remapping>
         </ros>
         <output_type>sensor_msgs/LaserScan</output_type>
         <frame_name>laser</frame_name>
