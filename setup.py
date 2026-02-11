@@ -50,6 +50,7 @@ setup(
     entry_points={
         'console_scripts': [
             'reset_robot = minicar_simulation.reset_robot_node:main',
+            'lidar_blind_spot_filter = minicar_simulation.lidar_blind_spot_filter:main',
         ],
     },
 )

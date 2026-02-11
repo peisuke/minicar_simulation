@@ -90,11 +90,26 @@ def create_spawn_actions(context, *args, **kwargs):
         }],
     )
 
+    # LiDAR blind spot filter node
+    lidar_filter_node = Node(
+        package="minicar_simulation",
+        executable="lidar_blind_spot_filter",
+        name="lidar_blind_spot_filter",
+        namespace=robot_ns,
+        output="screen",
+        parameters=[{
+            "blind_spot_start_deg": 115.0,
+            "blind_spot_end_deg": 246.0,
+            "input_topic": "scan_raw",
+            "output_topic": "scan",
+        }],
+    )
+
     return [
         LogInfo(msg=f"Spawning at x={pose['x']:.3f}, y={pose['y']:.3f}, yaw={pose['yaw']:.3f}"),
         TimerAction(period=3.0, actions=[spawn]),
         TimerAction(period=6.0, actions=[spawn_jsb, spawn_diff]),
-        TimerAction(period=7.0, actions=[reset_robot_node]),
+        TimerAction(period=7.0, actions=[reset_robot_node, lidar_filter_node]),
     ]
 
 
@@ -238,6 +253,22 @@ def generate_launch_description():
         condition=UnlessCondition(generate_course),
     )
 
+    # LiDAR blind spot filter node (for generate_course=false case)
+    lidar_filter_node_immediate = Node(
+        package="minicar_simulation",
+        executable="lidar_blind_spot_filter",
+        name="lidar_blind_spot_filter",
+        namespace=robot_ns,
+        output="screen",
+        parameters=[{
+            "blind_spot_start_deg": 115.0,
+            "blind_spot_end_deg": 246.0,
+            "input_topic": "scan_raw",
+            "output_topic": "scan",
+        }],
+        condition=UnlessCondition(generate_course),
+    )
+
     return LaunchDescription([
         DeclareLaunchArgument("world", default_value=default_world),
         DeclareLaunchArgument("entity", default_value="minicar"),
@@ -294,5 +325,5 @@ def generate_launch_description():
         ),
         immediate_spawn,
         immediate_controllers,
-        TimerAction(period=7.0, actions=[reset_robot_node_immediate]),
+        TimerAction(period=7.0, actions=[reset_robot_node_immediate, lidar_filter_node_immediate]),
     ])
